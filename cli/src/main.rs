@@ -6,7 +6,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let config = Config::new(&args).unwrap_or_else(|err| {
-        println!("Problem encountered: {}", err);
+        eprintln!("Problem encountered: {}", err);
         process::exit(1);
     });
 
@@ -14,7 +14,7 @@ fn main() {
     println!("in file: {}", config.filename);
 
     if let Err(e) = cli::run(config){
-        println!("Application Error: {}", e);
+        eprintln!("Application Error: {}", e);
         process:: exit(1);
     }
 }
