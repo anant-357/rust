@@ -1,9 +1,24 @@
 use std::fs;
 use std::error::Error;
 use std::env;
+use std::process;
 
+pub fn basics(args: Vec<String>)->(){
+    if args.len()==2 {
+        if args[1]=="help" {
+                println!("This is a mini version of the grep tool");
+                process::exit(1);
+        }
+        else{
+             eprintln!("Not a basic command");   
+             process::exit(1);
+        }
+    }
 
-pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+}
+
+pub fn run(config: Config) -> Result<(), Box<dyn Error>> {   
+
     let contents = fs::read_to_string(config.filename)?;
 
     let results = if config.case_sensitive {
@@ -83,7 +98,7 @@ Rust:
 safe,fast,productive
 Pick three
 Trust me.
-        ";
+        "; 
         assert_eq!(vec!["Rust:", "Trust me."], search_case_insensitive(query,contents));
     }
 }
