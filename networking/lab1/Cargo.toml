@@ -1,0 +1,24 @@
+[package]
+name = "lab1"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+
+[[bin]]
+name = "client"
+path = "src/client.rs"
+
+
+[[bin]]
+name = "server_single"
+path = "src/server_single.rs"
+
+
+[[bin]]
+name = "server_multiple"
+path = "src/server_multiple.rs"
+
