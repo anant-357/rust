@@ -1,9 +1,59 @@
 mod pa;
 use std::collections::HashMap;
-use std::net::{TcpListener, TcpStream, Shutdown};
+use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write};
 use pa::Pa;
 use std::thread;
+use std::sync::{Arc,Mutex};
+
+struct Hub{
+    nodes: HashMap<usize, TcpStream>,
+    next: usize,
+}
+
+impl Hub {
+    pub fn new()-> Self {
+        Hub { nodes: HashMap::new(), next: 1 as usize }
+    }
+
+    pub fn add_node(&mut self, stream: TcpStream) -> usize{
+
+        self.nodes.insert(self.next, stream);
+        self.next+=1;
+        return self.next-1;
+    }    
+
+    pub fn get_node(&mut self, node_id: usize) -> &mut TcpStream {
+        self.nodes.get_mut(&node_id).unwrap()
+    }
+    
+ 
+}
+
+fn handle_client(nodes: Arc<Mutex<Hub>>, node_id: usize){
+    let mut node_stream = nodes.lock().unwrap().get_node(node_id).try_clone().unwrap();
+    loop{
+    let mut buffer = [0 as u8; 1024];
+    match node_stream.read(&mut buffer) {
+        Ok(0) => {},
+        Ok(size) => {
+            let b = buffer[0] as char;
+            let send_to_node_id: usize = b.to_digit(10).unwrap() as usize;
+            println!("{:#?}", send_to_node_id);
+            let mut send_to_node: TcpStream = nodes.lock().unwrap().get_node(send_to_node_id).try_clone().unwrap();
+            match send_to_node.write(&buffer[0..size]) {
+                Ok(_) => {
+                    println!("Sent data!");
+                },
+                Err(e) => panic!("Unable to write to stream! {}",e),
+            }
+        },
+        Err(e) => panic!("Error while reading from stream {}", e),
+    }
+    }
+}
+
+
 
 fn handle_args(args: Vec<String>) -> Result<Pa, String> {
     match args.len() {
@@ -14,51 +64,23 @@ fn handle_args(args: Vec<String>) -> Result<Pa, String> {
     }
 }
 
-fn handle_client(mut stream: TcpStream){
-    thread::spawn(|| {
-        loop {}   
-    });
-    thread::spawn(|| {
-        loop {}   
-    });
-}
-
-struct hub{
-    nodes: HashMap<usize, TcpStream>,
-}
-
-impl hub {
-    pub fn new()-> Self {
-        hub { nodes: HashMap::new() }
-    }
-
-    pub fn add_node(&mut self, node_id: usize, stream: TcpStream){
-        self.nodes.insert(node_id, stream);
-        self.nodes.in
-    }    
-
-    pub fn delete_node(&mut self, node_id: usize){
-        self.nodes.remove(&node_id);
-    }    
-}
 
 fn main(){
     let args: Vec<String> = std::env::args().collect();
     let port_and_addr: Pa = handle_args(args).unwrap();
-    let mut nodes_str = String::new();
-    match std::io::stdin().read_to_string(&mut nodes_str){
-        Ok(_) => {},
-        Err(e) => println!("Error while reading number of nodes"),
-    }
-    
-    let nodes = nodes_str.parse::<usize>().unwrap();
-    
-
+    let nodes = Arc::new(Mutex::new(Hub::new()));
 
     let listener: TcpListener = TcpListener::bind(port_and_addr.get_string().as_str()).expect("Unable to bind to port");
     for stream in listener.incoming() {
         match stream {
-            Ok(stream) => handle_client(stream),
+            Ok(stream) => {
+                let node_id = nodes.lock().unwrap().add_node(stream);
+                println!("Hello ...");
+                let nodes_clone  = Arc::clone(&nodes);
+                let node_thread = thread::spawn(move || {
+                    handle_client(nodes_clone, node_id);
+                });
+            },
             Err(e) => println!("Error : {}", e),
         }
     }
